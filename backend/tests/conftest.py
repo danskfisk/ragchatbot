@@ -171,3 +171,101 @@ def cleanup_test_db(chroma_path: str):
     """Cleanup test database"""
     if os.path.exists(chroma_path):
         shutil.rmtree(chroma_path)
+
+
+@pytest.fixture
+def api_test_data():
+    """Standard test data for API tests"""
+    return {
+        "query": "What is Python programming?",
+        "answer": "Python is a high-level programming language.",
+        "sources": ["Python Documentation", "Programming Guide"],
+        "session_id": "test_session_123"
+    }
+
+
+@pytest.fixture
+def large_test_data():
+    """Large test data for performance testing"""
+    return {
+        "large_query": "Large test query " * 100,
+        "large_answer": "Large test answer " * 1000,
+        "large_sources": [f"Large source {i} " * 50 for i in range(20)]
+    }
+
+
+@pytest.fixture
+def unicode_test_data():
+    """Unicode test data for encoding tests"""
+    return {
+        "unicode_query": "Qué es Python? 🐍",
+        "unicode_answer": "Python es un lenguaje con émojis 🚀",
+        "unicode_sources": ["Documentación en español"]
+    }
+
+
+@pytest.fixture(scope="session")
+def test_server_port():
+    """Get an available port for test server"""
+    import socket
+    with socket.socket() as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture
+def error_scenarios():
+    """Common error scenarios for testing"""
+    return {
+        "connection_error": ConnectionError("Database connection failed"),
+        "timeout_error": TimeoutError("Request timed out"),
+        "memory_error": MemoryError("Out of memory"),
+        "value_error": ValueError("Invalid input value"),
+        "key_error": KeyError("Missing required key"),
+        "type_error": TypeError("Incorrect type"),
+        "unicode_error": UnicodeError("Unicode encoding error")
+    }
+
+
+@pytest.fixture
+def mock_course_analytics():
+    """Mock course analytics data"""
+    return {
+        "total_courses": 5,
+        "course_titles": [
+            "Introduction to Python",
+            "Advanced Machine Learning",
+            "Web Development with FastAPI",
+            "Data Science Fundamentals", 
+            "DevOps and Deployment"
+        ]
+    }
+
+
+# Pytest configuration hooks
+def pytest_configure(config):
+    """Configure pytest with custom markers"""
+    config.addinivalue_line("markers", "unit: Unit tests for individual components")
+    config.addinivalue_line("markers", "integration: Integration tests")
+    config.addinivalue_line("markers", "slow: Slow running tests")
+    config.addinivalue_line("markers", "api: API endpoint tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection to add markers automatically"""
+    for item in items:
+        # Add 'api' marker to API test files
+        if "test_api" in item.nodeid:
+            item.add_marker(pytest.mark.api)
+        
+        # Add 'slow' marker to performance tests
+        if "performance" in item.name.lower() or "stress" in item.name.lower():
+            item.add_marker(pytest.mark.slow)
+        
+        # Add 'unit' marker to unit test files
+        if any(unit_file in item.nodeid for unit_file in ["test_vector_store", "test_ai_generator"]):
+            item.add_marker(pytest.mark.unit)
+        
+        # Add 'integration' marker to integration test files
+        if "test_rag_system" in item.nodeid or "test_data_integrity" in item.nodeid:
+            item.add_marker(pytest.mark.integration)
